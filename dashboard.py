@@ -26,7 +26,9 @@ def main():
         
         # Get unique queues
         unique_queues = df['queuetotal'].unique().tolist()
-        
+        # Remove -pub if at end of string
+        unique_queues = [q.replace('-pub', '') if q.endswith('-pub') else q for q in unique_queues]
+
         # Multiselect for queues
         selected_queues = st.sidebar.multiselect(
             'Select Queues to Analyze',
