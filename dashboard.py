@@ -16,16 +16,16 @@ def main():
     # File uploader
     # uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
     
-    if uploaded_file is not None:
+    if True:#uploaded_file is not None:
         # Load the data
         # df = load_data(uploaded_file)
-        df = load_data("/projectnb/rcs-intern/ryanjg/metrics/queue_daily_usage.csv")
+        df = load_data("queue_daily_usage.csv")
         
         # Sidebar for queue selection
         st.sidebar.header('Queue Selection')
         
         # Get unique queues
-        unique_queues = df['queue'].unique().tolist()
+        unique_queues = df['queuetotal'].unique().tolist()
         
         # Multiselect for queues
         selected_queues = st.sidebar.multiselect(
@@ -35,18 +35,21 @@ def main():
         )
         
         # Filter data based on selected queues
-        filtered_df = df[df['queue'].isin(selected_queues)]
+        filtered_df = df[df['queuetotal'].isin(selected_queues)]
         
         # Group by date and calculate mean utilization
-        grouped_df = filtered_df.groupby('date')['util_mean'].mean().reset_index()
+        # grouped_df = filtered_df.groupby('date')['util'].mean().reset_index()
+        # rather than mean the util, we need to sum cores_util, cores_total
+        grouped_df = filtered_df.groupby('date').agg({'cores_util':'sum', 'cores_total':'sum'}).reset_index()
+        grouped_df['util'] = grouped_df['cores_util'] / grouped_df['cores_total']
         
         # Create interactive plotly line chart
         fig = px.line(
             grouped_df, 
             x='date', 
-            y='util_mean',
+            y='util',
             title=f'Average Daily Utilization for Selected Queues',
-            labels={'util_mean': 'Average Utilization', 'date': 'Date'}
+            labels={'util': 'Average Utilization', 'date': 'Date'}
         )
         
         # Customize the chart

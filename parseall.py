@@ -4,7 +4,7 @@ import os
 
 # -------- USER SETTINGS --------
 data_dir = '/project/scv/dugan/sge/data'
-queue_info = '/projectnb/scv/utilization/katia/queue_info.csv'
+queue_info_file = '/projectnb/scv/utilization/katia/queue_info.csv'
 output_csv = 'queue_daily_usage.csv'
 start_ym = '2024-01'  # <-- starting year-month
 end_ym   = '2025-01'  # <-- ending year-month
@@ -24,56 +24,69 @@ def month_range(start_ym, end_ym):
             start = start.replace(month=start.month+1)
     return ym_list
 
-# List files to process
+# Load the queue info
+queue_info = pd.read_csv(queue_info_file)[['queuename', 'queuetotal', 'class_util']]
+
 months = month_range(start_ym, end_ym)
 files = [os.path.join(data_dir, f"{m}.q") for m in months]
 
-df_all = []
+all_results = []
 
 for f in files:
     if not os.path.exists(f):
         print(f"File not found: {f}")
         continue
     print(f"Processing {f}...")
+
+    # Adjust names here as per your new schema!
     df = pd.read_csv(
         f,
-        sep='\s+',
+        sep=r"\s+",
         header=None,
         na_values=['-NA-'],
-        names=['time','queue','util?','?', '??','???','????','?????','??????'],
+        names=['time','queue','ignore_util','cores_util', '??','???','cores_total','?????','??????'],
         on_bad_lines='warn'
     )
-    
-    
-    # df['time'] = pd.to_datetime(df['time'])
-    # df['date'] = df['time'].dt.date
-
-
-    # Attempt to parse
+    # Parse time
     df['time'] = pd.to_datetime(df['time'], errors='coerce', unit='s')
     n_bad = df['time'].isna().sum()
     if n_bad > 0:
         print(f"Dropping {n_bad} rows where 'time' is unparseable")
-        # Optional: save bad rows for later review
-        # df[df['time'].isna()].to_csv('bad_times_{}.csv'.format(os.path.basename(f)), index=False)
     df = df.dropna(subset=['time'])
     df['date'] = df['time'].dt.date
-    # daily mean aggregation per queue
-    agg = (
-        df
-        .groupby(['date', 'queue'], as_index=False)['util?']
-        .mean()
-        .rename(columns={'util?': 'util_mean'})
-    )
-    df_all.append(agg)
 
-# Combine all
-if df_all:
-    result = pd.concat(df_all, ignore_index=True)
-    # Get queue info to join
-    queue_info = pd.read_csv(queue_info)[['queuename', 'class_util']]
-    final = pd.merge(result, queue_info, left_on='queue', right_on='queuename', how='left')
+    # Merge queue metadata
+    df_meta = pd.merge(
+        df,
+        queue_info,
+        left_on="queue",
+        right_on="queuename",
+        how='left'
+    )[['time', 'date', 'queue', 'cores_util', 'cores_total', 'queuetotal', 'class_util']]
+
+    # --- Daily Aggregation by queuetotal ---
+    # Step 1: Sum cores_util for each (date, queuetotal)
+    cores_util_day = df_meta.groupby(['date', 'queuetotal'], sort=False)['cores_util'].mean().reset_index()
+    print('hm this doesnt quite line up with rcs metrics dash')
+    # Step 2: Get header row's cores_total (for the main queue for the group)
+    header_daily = (
+        df_meta[df_meta['queue'] == df_meta['queuetotal']]
+        .drop_duplicates(subset=['date', 'queuetotal'])
+        [['date', 'queuetotal', 'cores_total']]
+    )
+    # Step 3: Merge and calculate util
+    out_daily = pd.merge(cores_util_day, header_daily, on=['date', 'queuetotal'], how='left')
+    out_daily['util'] = out_daily['cores_util'] / out_daily['cores_total']
+    # Optional: tidy output
+    result_daily = out_daily[['date', 'queuetotal', 'cores_util', 'cores_total', 'util']]
+    # Add file/month info if desired:
+    # result_daily['source_file'] = f
+    all_results.append(result_daily)
+
+# Combine all months
+if all_results:
+    final = pd.concat(all_results, ignore_index=True)
     final.to_csv(output_csv, index=False)
-    print(f"Combined daily usage written to: {output_csv}")
+    print(f"Combined daily utilization written to: {output_csv}")
 else:
     print("No data found in the specified range.")
