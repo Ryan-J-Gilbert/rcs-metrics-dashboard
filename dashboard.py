@@ -25,9 +25,10 @@ def main():
         st.sidebar.header('Queue Selection')
         
         # Get unique queues
+        df['queuetotal'] = df['queuetotal'].str.replace(r'-pub$', '', regex=True)
         unique_queues = df['queuetotal'].unique().tolist()
         # Remove -pub if at end of string
-        unique_queues = [q.replace('-pub', '') if q.endswith('-pub') else q for q in unique_queues]
+        # unique_queues = [q.replace('-pub', '') if q.endswith('-pub') else q for q in unique_queues]
 
         # Multiselect for queues
         selected_queues = st.sidebar.multiselect(
