@@ -72,13 +72,13 @@ for f in files:
     header_daily = (
         df_meta[df_meta['queue'] == df_meta['queuetotal']]
         .drop_duplicates(subset=['date', 'queuetotal'])
-        [['date', 'queuetotal', 'cores_total']]
+        [['date', 'queuetotal', 'cores_total', 'class_util']]
     )
     # Step 3: Merge and calculate util
     out_daily = pd.merge(cores_util_day, header_daily, on=['date', 'queuetotal'], how='left')
     out_daily['util'] = out_daily['cores_util'] / out_daily['cores_total']
     # Optional: tidy output
-    result_daily = out_daily[['date', 'queuetotal', 'cores_util', 'cores_total', 'util']]
+    result_daily = out_daily[['date', 'queuetotal', 'cores_util', 'cores_total', 'util', 'class_util']]
     # Add file/month info if desired:
     # result_daily['source_file'] = f
     all_results.append(result_daily)

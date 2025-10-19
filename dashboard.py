@@ -37,8 +37,16 @@ def main():
             default=unique_queues
         )
         
+        # Multiselect for class_util
+        st.sidebar.header('Class Util Selection')
+        unique_class_utils = df['class_util'].unique().tolist()
+        selected_class_utils = st.sidebar.multiselect(
+            'Select Class Util to Analyze',
+            unique_class_utils,
+            default=unique_class_utils
+        )
         # Filter data based on selected queues
-        filtered_df = df[df['queuetotal'].isin(selected_queues)]
+        filtered_df = df[(df['queuetotal'].isin(selected_queues)) & (df['class_util'].isin(selected_class_utils))]
         
         # Group by date and calculate mean utilization
         # grouped_df = filtered_df.groupby('date')['util'].mean().reset_index()
