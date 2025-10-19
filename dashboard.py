@@ -55,12 +55,30 @@ def main():
         grouped_df['util'] = grouped_df['cores_util'] / grouped_df['cores_total']
         
         # Create interactive plotly line chart
+        # fig = px.line(
+        #     grouped_df, 
+        #     x='date', 
+        #     y='util',
+        #     title=f'Average Daily Utilization for Selected Queues',
+        #     labels={'util': 'Average Utilization', 'date': 'Date'}
+        # )
         fig = px.line(
             grouped_df, 
             x='date', 
             y='util',
             title=f'Average Daily Utilization for Selected Queues',
-            labels={'util': 'Average Utilization', 'date': 'Date'}
+            labels={
+                'util': 'Average Utilization',
+                'date': 'Date',
+                'cores_util': 'Used Cores',
+                'cores_total': 'Total Cores'
+            },
+            hover_data={
+                'cores_util': True,
+                'cores_total': True,
+                'util': True,
+                'date': True
+            }
         )
         
         # Customize the chart
