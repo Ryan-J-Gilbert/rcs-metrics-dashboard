@@ -1,12 +1,12 @@
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import os
 
 # -------- USER SETTINGS --------
 data_dir = '/project/scv/dugan/sge/data'
 queue_info_file = '/projectnb/scv/utilization/katia/queue_info.csv'
 output_csv = 'queue_daily_usage.csv'
-start_ym = '2024-01'  # <-- starting year-month
+start_ym = '2015-01'  # <-- starting year-month
 end_ym   = '2025-01'  # <-- ending year-month
 # --------------------------------
 
@@ -54,6 +54,12 @@ for f in files:
         print(f"Dropping {n_bad} rows where 'time' is unparseable")
     df = df.dropna(subset=['time'])
     df['date'] = df['time'].dt.date
+
+    target_date = date(1970, 1, 1)
+    matching_rows = df['time'].dt.date == target_date
+    if matching_rows.sum() > 0:
+        print(f"Dropping {matching_rows.sum()} rows where date is 1970-01-01")
+        df = df[df['time'].dt.date != target_date]
 
     # Merge queue metadata
     df_meta = pd.merge(
